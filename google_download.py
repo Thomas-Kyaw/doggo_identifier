@@ -30,20 +30,18 @@ for breed in dog_breeds:
                                 adult_filter_off=True, force_replace=False, timeout=60)
             downloaded_images = len(os.listdir(os.path.join(output_dir, breed)))
 
-            # Check if no new images have been downloaded
-            if downloaded_images == prev_downloaded_images:
-                last_download_time = time.time()
-            else:
+            # Check if new images have been downloaded
+            if downloaded_images > prev_downloaded_images:
                 prev_downloaded_images = downloaded_images
                 last_download_time = time.time()
+            else:
+                # No new images have been downloaded
+                if time.time() - last_download_time > timeout_threshold:
+                    print(f"No new images downloaded for breed {breed} in the last {timeout_threshold} seconds. Moving to the next breed.")
+                    break
 
         except Exception as e:
             print(f"Error downloading images for breed {breed}: {str(e)}")
-
-        # Check if no new images have been downloaded for the specified timeout threshold
-        if time.time() - last_download_time > timeout_threshold:
-            print(f"No new images downloaded for breed {breed} in the last {timeout_threshold} seconds. Moving to the next breed.")
-            break
 
     print(f"Downloaded {downloaded_images} images for breed: {breed}")
     print("------------------------")
