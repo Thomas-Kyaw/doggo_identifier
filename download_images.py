@@ -4,13 +4,12 @@ import flickrapi
 import time
 
 # Directory setup
-external_drive = '/Volumes/Extra HardD'
-base_dir = os.path.join(external_drive, 'dog_images')
+base_dir = os.path.expanduser("~/Downloads/dog_images")
 breeds = ['Samoyed', 'Dalmatian', 'Dachshund', 'Greyhound', 'Poodle']
 images_needed = 1000
 
 # Unsplash API key
-unsplash_access_key = '5f606aee1df7dca3dd9b9478a5b115fe'
+unsplash_access_key = 'lTgblcVeKFaXylPJC4ezvAw9PhoFebvL2g7tXJsGlDg'
 
 # Flickr API setup
 flickr_api_key = '5f606aee1df7dca3dd9b9478a5b115fe'
@@ -19,7 +18,7 @@ flickr = flickrapi.FlickrAPI(flickr_api_key, flickr_api_secret, format='parsed-j
 
 def create_directories():
     if not os.path.exists(base_dir):
-        os.mkdir(base_dir)
+        os.makedirs(base_dir)
     for breed in breeds:
         breed_dir = os.path.join(base_dir, breed)
         if not os.path.exists(breed_dir):
@@ -41,21 +40,30 @@ def fetch_images_from_unsplash(breed, count=images_needed):
     img_urls = []
     while downloaded < count:
         search_url = f"https://api.unsplash.com/search/photos?query={breed}&client_id={unsplash_access_key}&per_page=30&page={page}"
-        response = requests.get(search_url).json()
-        if 'results' not in response:
-            print(f"Error fetching images for {breed}: {response}")
-            break
-        results = response['results']
-        if not results:
-            print(f"No more results for {breed}")
-            break
-        for result in results:
-            if downloaded >= count:
+        try:
+            response = requests.get(search_url)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            data = response.json()
+            if 'results' not in data:
+                print(f"Unexpected response structure: {data}")
                 break
-            img_url = result['urls']['small']
-            img_urls.append(img_url)
-            downloaded += 1
-        page += 1
+            results = data['results']
+            if not results:
+                print(f"No more results for {breed}")
+                break
+            for result in results:
+                if downloaded >= count:
+                    break
+                img_url = result['urls']['small']
+                img_urls.append(img_url)
+                downloaded += 1
+            page += 1
+        except requests.exceptions.RequestException as e:
+            print(f"Request error fetching images for {breed}: {e}")
+            break
+        except Exception as e:
+            print(f"Unexpected error fetching images for {breed}: {e}")
+            break
     return img_urls
 
 def fetch_images_from_flickr(breed, count=images_needed):
@@ -68,8 +76,6 @@ def fetch_images_from_flickr(breed, count=images_needed):
             for size in photo_info['sizes']['size']:
                 if size['label'] == 'Small':
                     img_urls.append(size['source'])
-                    if len(img_urls) >= count:
-                        break
             if len(img_urls) >= count:
                 break
     except Exception as e:
